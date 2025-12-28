@@ -805,6 +805,7 @@
 
     <script>
         // ============ 全局状态 ============
+        const MAX_OPTION_NAME_LENGTH = 8; // 选项名称最大字符数
         const state = {
             options: [], // { name: string, probability: number }
             title: '',
@@ -952,9 +953,17 @@
             const row = document.createElement('div');
             row.className = 'option-row';
             row.innerHTML = `
-                <input type="text" class="option-name" placeholder="选项名称" value="${name}" required>
-                <input type="number" class="option-prob" placeholder="%" min="0" max="100" value="${probability}" required>
-                <span>%</span>
+                <div style="flex: 2; display: flex; flex-direction: column;">
+                    <input type="text" class="option-name" placeholder="选项名称" value="${name}"
+                           maxlength="${MAX_OPTION_NAME_LENGTH}" required>
+                    <span class="char-count" style="font-size: 12px; color: #909399; margin-top: 2px;">
+                        ${name.length}/${MAX_OPTION_NAME_LENGTH}
+                    </span>
+                </div>
+                <div style="flex: 1; display: flex; align-items: center; gap: 5px;">
+                    <input type="number" class="option-prob" placeholder="%" min="0" max="100" value="${probability}" required>
+                    <span>%</span>
+                </div>
                 <button type="button" class="remove-btn" ${optionsContainer.children.length >= 5 ? 'disabled' : ''}>×</button>
             `;
 
@@ -964,10 +973,27 @@
             updateRemoveButtons();
 
             // 添加输入监听
-            const inputs = row.querySelectorAll('input');
-            inputs.forEach(input => {
-                input.addEventListener('input', updateTotalHint);
+            const nameInput = row.querySelector('.option-name');
+            const probInput = row.querySelector('.option-prob');
+            const charCount = row.querySelector('.char-count');
+
+            nameInput.addEventListener('input', () => {
+                const length = nameInput.value.length;
+                charCount.textContent = `${length}/${MAX_OPTION_NAME_LENGTH}`;
+
+                // 超过字数限制时显示警告
+                if (length >= MAX_OPTION_NAME_LENGTH) {
+                    charCount.style.color = '#f56c6c';
+                } else if (length >= MAX_OPTION_NAME_LENGTH - 2) {
+                    charCount.style.color = '#e6a23c';
+                } else {
+                    charCount.style.color = '#909399';
+                }
+
+                updateTotalHint();
             });
+
+            probInput.addEventListener('input', updateTotalHint);
 
             // 删除按钮事件
             const removeBtn = row.querySelector('.remove-btn');
@@ -1211,14 +1237,13 @@
                 wheelCtx.lineWidth = 2;
                 wheelCtx.stroke();
 
-                // 绘制文字
+                // 绘制文字（支持自动换行）
                 wheelCtx.save();
                 wheelCtx.translate(centerX, centerY);
                 wheelCtx.rotate(currentAngle + angle / 2);
                 wheelCtx.textAlign = 'center';
                 wheelCtx.textBaseline = 'middle';
                 wheelCtx.fillStyle = 'white';
-                wheelCtx.font = 'bold 18px Arial, sans-serif';
                 wheelCtx.shadowColor = 'rgba(0, 0, 0, 0.5)';
                 wheelCtx.shadowBlur = 4;
                 wheelCtx.shadowOffsetX = 1;
@@ -1226,7 +1251,33 @@
 
                 // 文字放在半径的 2/3 处
                 const textRadius = radius * 0.65;
-                wheelCtx.fillText(option.name, textRadius, 0);
+
+                // 根据文字长度决定字体大小和是否换行
+                const textLength = option.name.length;
+                let fontSize = 18;
+                let lines = [option.name];
+
+                if (textLength > 6) {
+                    fontSize = 14; // 长文字用较小字体
+                }
+
+                if (textLength > 5) {
+                    // 自动换行：超过5个字符分成两行
+                    const mid = Math.ceil(textLength / 2);
+                    lines = [option.name.slice(0, mid), option.name.slice(mid)];
+                }
+
+                wheelCtx.font = `bold ${fontSize}px Arial, sans-serif`;
+
+                // 绘制文字（支持多行）
+                const lineHeight = fontSize * 1.2;
+                const totalHeight = lines.length * lineHeight;
+                const startY = -totalHeight / 2 + lineHeight / 2;
+
+                lines.forEach((line, i) => {
+                    wheelCtx.fillText(line, textRadius, startY + i * lineHeight);
+                });
+
                 wheelCtx.restore();
 
                 currentAngle += angle;
@@ -1400,16 +1451,20 @@
         }
 
         function calculateTargetAngle(resultIndex) {
-            // 计算每个扇形的起始角度（从顶部开始，-90度）
+            // 计算目标扇形中心相对于转盘起始位置的角度
             let cumulativeAngle = 0;
             for (let i = 0; i < resultIndex; i++) {
                 cumulativeAngle += (state.options[i].probability / 100) * 360;
             }
-            // 计算该扇形中心的角度
-            const resultAngle = cumulativeAngle + (state.options[resultIndex].probability / 100) * 360 / 2;
-            // 指针在顶部（0度），转盘需要旋转使该角度对准顶部
-            // 由于 Canvas 从 -90 度开始绘制，需要调整
-            return resultAngle - 90;
+            // 扇形中心的角度
+            const sectorCenterAngle = cumulativeAngle + (state.options[resultIndex].probability / 100) * 360 / 2;
+
+            // Canvas 从 -90 度（12点钟方向）开始绘制
+            // 指针固定在顶部（12点钟方向）
+            // 转盘顺时针旋转，要让扇形对准指针
+            // 转盘需要旋转的角度 = 360 - 扇形中心角度
+            // 这样扇形中心就会转到顶部（0度位置）
+            return sectorCenterAngle;
         }
 
         function showResult(resultIndex) {
