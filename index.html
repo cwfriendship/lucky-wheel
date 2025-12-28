@@ -52,10 +52,14 @@
             background: var(--bg-color);
             color: var(--text-color);
             min-height: 100vh;
+            min-height: 100dvh; /* 使用动态视口高度，适配移动端 */
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 20px;
+            padding: 16px;
+            /* 适配安全区域（iPhone 刘海屏） */
+            padding-top: max(16px, env(safe-area-inset-top));
+            padding-bottom: max(16px, env(safe-area-inset-bottom));
         }
 
         .container {
@@ -68,8 +72,8 @@
             background: var(--card-bg);
             border-radius: 16px;
             box-shadow: var(--shadow);
-            padding: 30px;
-            margin-bottom: 20px;
+            padding: 24px;
+            margin-bottom: 16px;
         }
 
         h1, h2, h3 {
@@ -329,7 +333,10 @@
             position: relative;
             width: 320px;
             height: 320px;
-            margin: 30px auto;
+            margin: 20px auto;
+            /* 确保转盘不会被截断 */
+            max-width: 90vw;
+            max-height: 90vw;
         }
 
         .wheel-pointer {
@@ -544,40 +551,106 @@
             justify-content: center;
         }
 
-        @media (max-width: 600px) {
+        /* 小屏手机适配 */
+        @media (max-width: 480px) {
             body {
-                padding: 10px;
+                padding: 12px;
+                padding-top: max(12px, env(safe-area-inset-top));
+                padding-bottom: max(12px, env(safe-area-inset-bottom));
             }
 
             .card {
-                padding: 15px;
+                padding: 16px;
+                border-radius: 12px;
+            }
+
+            h1 {
+                font-size: 1.4em;
+                margin-bottom: 12px;
+            }
+
+            h3 {
+                font-size: 0.95em;
+                margin-bottom: 12px;
             }
 
             .wheel-container {
                 width: 280px;
                 height: 280px;
-                margin: 20px auto;
+                margin: 16px auto;
             }
 
             .option-row {
                 flex-direction: column;
                 align-items: stretch;
+                gap: 8px;
             }
 
             .button-group {
                 flex-direction: column;
+                gap: 10px;
             }
 
             .btn {
                 width: 100%;
+                padding: 12px 24px;
+                font-size: 15px;
+            }
+
+            .spin-button {
+                padding: 16px 40px;
+                font-size: 18px;
+            }
+
+            .theme-options {
+                gap: 10px;
+            }
+
+            .theme-option {
+                min-width: 90px;
+                padding: 12px 8px;
+                font-size: 14px;
+            }
+
+            .theme-preview {
+                width: 50px;
+                height: 50px;
+            }
+        }
+
+        /* 超小屏手机适配（iPhone SE, 小屏安卓） */
+        @media (max-width: 375px) {
+            .wheel-container {
+                width: 260px;
+                height: 260px;
             }
 
             h1 {
-                font-size: 1.5em;
+                font-size: 1.2em;
             }
 
-            h3 {
-                font-size: 1em;
+            .card {
+                padding: 12px;
+            }
+
+            .chances-info {
+                font-size: 14px;
+            }
+        }
+
+        /* 大屏手机适配（iPhone 14/15 Pro Max, 安卓大屏） */
+        @media (min-width: 430px) and (max-width: 600px) {
+            .wheel-container {
+                width: 340px;
+                height: 340px;
+            }
+        }
+
+        /* iPad 和平板适配 */
+        @media (min-width: 768px) and (max-width: 1024px) {
+            .wheel-container {
+                width: 380px;
+                height: 380px;
             }
         }
     </style>
@@ -1064,9 +1137,22 @@
         }
 
         function initWheelCanvas() {
-            // 根据屏幕宽度动态设置尺寸
+            // 根据屏幕宽度动态设置尺寸，匹配 CSS 媒体查询
             const screenWidth = window.innerWidth;
-            const size = screenWidth < 400 ? 280 : 320; // 手机上用 280，电脑上用 320
+            let size;
+
+            if (screenWidth <= 375) {
+                size = 260; // iPhone SE, 小屏安卓
+            } else if (screenWidth <= 480) {
+                size = 280; // 普通手机（iPhone 13/14/15 Pro）
+            } else if (screenWidth <= 600 && screenWidth >= 430) {
+                size = 340; // 大屏手机（iPhone 14/15 Pro Max）
+            } else if (screenWidth >= 768 && screenWidth <= 1024) {
+                size = 380; // iPad 和平板
+            } else {
+                size = 320; // 电脑
+            }
+
             const dpr = window.devicePixelRatio || 1; // 获取设备像素比
 
             wheelCanvas.width = size * dpr;
