@@ -822,15 +822,41 @@
                 return;
             }
 
-            // 初始化选项行（3个）
+            // 如果没有保存的配置，使用默认配置
             if (state.options.length === 0) {
-                addOptionRow('游戏时间1小时', 20);
-                addOptionRow('零用钱10块', 20);
-                addOptionRow('看一场电影', 20);
-                addOptionRow('买一个玩具', 20);
-                addOptionRow('报名课外班', 20);
-            } else {
-                state.options.forEach(opt => addOptionRow(opt.name, opt.probability));
+                state.options = [
+                    { name: '游戏时间1小时', probability: 20 },
+                    { name: '零用钱10块', probability: 20 },
+                    { name: '看一场电影', probability: 20 },
+                    { name: '买一个玩具', probability: 20 },
+                    { name: '报名课外班', probability: 20 }
+                ];
+                state.title = '幸运大抽奖';
+                state.theme = 'simple';
+            }
+
+            // 如果有配置，直接显示转盘
+            if (state.options.length > 0) {
+                // 设置标题
+                gameTitle.textContent = `🎡 ${state.title}`;
+
+                // 设置主题
+                document.documentElement.setAttribute('data-theme', state.theme);
+
+                // 绘制转盘
+                drawWheel();
+
+                // 显示游戏界面
+                showPage(3);
+
+                // 设置事件监听
+                setupEventListeners();
+
+                // 隐藏编辑按钮（直接访问时不需要编辑）
+                editBtn.style.display = 'inline-block';
+                editBtn.textContent = '⚙️ 配置';
+
+                return;
             }
 
             // 初始化主题
@@ -973,6 +999,29 @@
         // ============ 页面切换 ============
         function goToPage1() {
             saveState();
+
+            // 清空选项容器
+            optionsContainer.innerHTML = '';
+
+            // 添加现有选项
+            state.options.forEach(opt => addOptionRow(opt.name, opt.probability));
+
+            // 更新总计
+            updateTotalHint();
+
+            // 设置标题
+            if (state.title) {
+                wheelTitleInput.value = state.title;
+            }
+
+            // 设置主题
+            themeOptions.forEach(opt => {
+                opt.classList.remove('selected');
+                if (opt.dataset.theme === state.theme) {
+                    opt.classList.add('selected');
+                }
+            });
+
             showPage(1);
         }
 
